@@ -12,13 +12,13 @@ try:
     gffutils_version = pkg_resources.get_distribution("gffutils").version
 except:
     print("This script requires gffutils version >= 0.9. See http://daler.github.io/gffutils")
-    exit(2)
+    exit(1)
 
 if float(gffutils_version) >= 0.899:
         import gffutils
 else:
         print("This script requires gffutils version >= 0.9. See http://daler.github.io/gffutils")
-        exit(2)
+        exit(1)
 
 
 import argparse
