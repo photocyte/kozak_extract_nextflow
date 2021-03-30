@@ -15,19 +15,11 @@ except:
     print("This script requires gffutils version >= 0.9. See http://daler.github.io/gffutils")
     exit(1)
 
-
-
-#if float(gffutils_version) >= 0.899:
-#        import gffutils
-#else:
-#        print("This script requires gffutils version >= 0.9. See http://daler.github.io/gffutils")
-#        exit(1)
-
-
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("-g")
-parser.add_argument("--i",default=20)
+parser.add_argument("-g",help="The path to the GFF file")
+parser.add_argument("--i",type=int,default=10,help="# of upstream bases.")
+parser.add_argument("--j",type=int,default=2,help="# of downstream bases.")
 parser.add_argument("--in_memory",default=False,action='store_true')
 parser.add_argument("--transdecoder_mode",default=False,action='store_true')
 parser.add_argument("--sqlite_name",default="gffutils.sqlite")
@@ -42,10 +34,10 @@ from_string_switch = False
 if args.g[-3:].lower() == ".gz":
     sys.stderr.write("Guessing it is a GZIP file based on the suffix. Decompressing into memory...\n")
     from_string_switch = True
-    handle = gzip.open(args.g,"r")
+    handle = gzip.open(args.g,"rt")
     args.g = handle.read()
-    sys.stderr.write("**NOT IMPLEMENTED** exiting...")
-    exit(1)
+    ##sys.stderr.write("**NOT IMPLEMENTED** exiting...")
+    ##exit(1)
 
 if args.in_memory == True:
     sys.stderr.write("Coverting to in memory gffutils sqlite database\n")
@@ -62,6 +54,7 @@ sys.stderr.flush()
 i=0
 if args.gff3_compliant:
    sys.stdout.write("##gff-version 3\n")
+
 for g in db.features_of_type("gene"):
     if args.transdecoder_mode and "complete" not in g["Name"][0]:
         continue
@@ -70,25 +63,39 @@ for g in db.features_of_type("gene"):
     for m in db.children(g.id,featuretype='mRNA'):
         if args.gff3_compliant:
             print(m)
-    for c in db.children(g.id,featuretype='CDS'):
-        if c.strand == "+":
-            new_start = c.start - args.i
-            new_stop = c.start + 14
-        if c.strand == "-":
-            new_start = c.stop - 14
-            new_stop = c.stop + args.i
-        if new_start < 1:
-            continue
-        if new_stop > g.stop:
-            continue
+
+    new_start = 999999999999999999
+    new_stop = -999999999999999999
+    
+
+    all_children = list(db.children(g.id,featuretype='CDS'))
+    if len(all_children) == 0:
+        continue
+    if g.strand == "+":
+        c = all_children[0]
+        new_start = c.start - args.i
+        new_stop = c.start + args.j
+    elif g.strand == "-":
+        c = all_children[-1]
+        new_start = c.stop - args.j
+        new_stop = c.stop + args.i
+    else:
+        sys.stderr.write("This shouldn't happen\n")
+        continue
+
+    ##Special case, when start codon is very near a scaffold edge it can go off the edge
+    if new_start < 1:
+        new_start = 1
         
-        new_attrs = []
-        for a in c.attributes:
-            ##sys.stderr.write(a+";;"+str(c.attributes[a])+'\n')
-            if len(c.attributes[a]) == 0:
-                continue
-            new_attrs.append(a+"="+c.attributes[a][0])
-        new_attr_string = ";".join(new_attrs)
-        gene_string = '\t'.join([c.chrom,c.source,"kozakseq",str(new_start),str(new_stop),c.score,c.strand,c.frame,new_attr_string])
-        sys.stdout.write(gene_string+"\n")
+    new_attrs = []
+    for a in c.attributes:
+        ##sys.stderr.write(a+";;"+str(c.attributes[a])+'\n')
+        if len(c.attributes[a]) == 0:
+            continue
+        elif a == "Parent":
+            continue
+        new_attrs.append(a+"="+c.attributes[a][0])
+    new_attr_string = ";".join(new_attrs)
+    gff_string = '\t'.join([c.chrom,c.source,"kozakseq",str(new_start),str(new_stop),c.score,c.strand,c.frame,new_attr_string])
+    sys.stdout.write(gff_string+"\n")
 

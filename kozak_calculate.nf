@@ -14,6 +14,7 @@ cat ${kallistoIsoformTMM} | sort -k2nr,2 | head -n 1500 | cut -f 1 | sed 's/\$/[
 }
 
 process kozakGFF3Extract {
+publishDir 'results', mode: 'link', overwrite: true
 conda "biopython gffutils"
 input:
   path transdecoderGFF
@@ -23,24 +24,59 @@ output:
 
 script:
 """
-kozak_gff3_extract.py -g ${transdecoderGFF} --in_memory | gzip > kozaks.gff.gz
+set -o pipefail
+kozak_gff3_extract.py -g ${transdecoderGFF} --in_memory --i 20 | gzip > kozaks.gff.gz
 """
 }
 
-process kozakFastaExtract {
-conda "seqkit"
+process gff_standardize {
+conda "genometools-genometools"
 input:
-  path inputGff
-  path inputFasta
+  path transdecoderGFF
 
 output:
-  path 'all_kozaks.fa.gz'
+  path "gt.$transdecoderGFF"
 
 script:
 """
-seqkit subseq --gtf ${inputGff} ${inputFasta} | seqkit rmdup -s | gzip >  all_kozaks.fa.gz
+gt gff3 -tidy -sort -retainids $transdecoderGFF | gzip > gt.$transdecoderGFF
 """
 }
+
+
+process kozakFastaExtract {
+publishDir 'results', mode: 'link', overwrite: true
+conda "seqkit"
+input:
+  tuple path(inputGff),path(inputFasta)
+
+output:
+  path 'all_kozaks.fa'
+
+script:
+"""
+set -o pipefail
+seqkit subseq --gtf ${inputGff} ${inputFasta} | seqkit rmdup -s >  all_kozaks.fa
+"""
+}
+
+process kozakFastaExtract_2 {
+publishDir 'results', mode: 'link', overwrite: true
+conda "genometools-genometools"
+input:
+  tuple path(inputGff),path(inputFasta)
+
+output:
+  path 'all_kozaks.fa'
+
+script:
+"""
+set -o pipefail
+gt extractfeat -seqid -matchdescstart -retainids -coords -type kozakseq -seqfile ${inputFasta} ${inputGff} > all_kozaks.fa
+"""
+}
+
+
 
 process kozakFastaExtractHighExp {
 input:
@@ -51,13 +87,14 @@ output:
 
 script:
 """
+set -o pipefail
 seqkit grep -n -r -f ${highlyExpressedRegexFile} ${inputFasta} > high_only_kozaks.fa
 """
 }
 
-process plotKozak {
-publishDir params.transXpressResults, mode: 'copy', overwrite: true
-tag {params.transXpressResults+'kozak_kpLogo.output.pdf'}
+process plot_kpLogo {
+publishDir 'results', mode: 'link', overwrite: true
+tag {'kozak_kpLogo.output.pdf'}
 input:
   path inputFasta
 output:
@@ -65,6 +102,19 @@ output:
 script:
 """
 kpLogo ${inputFasta} -o kozak_kpLogo.output -seq 1 -weight 2 -alphabet dna -max_k 4 -max_shift 1 -startPos 21 -gapped -minCount 0.01 -pseudo 1 -region 1,0 -plot p -pc 0.01 -stack_order 1 -fix 0.75
+"""
+}
+
+process plot_weblogo {
+publishDir 'results', mode: 'link', overwrite: true
+conda "weblogo"
+input:
+  path inputFasta
+output:
+  path "kozak_weblogo.output.pdf"
+script:
+"""
+weblogo -F pdf < ${inputFasta} > kozak_weblogo.output.pdf
 """
 }
 
@@ -85,6 +135,7 @@ println trinityFasta_ch1
 workflow {
 theGff = Channel.fromPath(params.gff)
 theFasta = Channel.fromPath(params.fasta) 
-kozakGFF3Extract(theGff)
-kozakFastaExtract(kozakGFF3Extract.out,theFasta) | plotKozak
+kozakGFF3Extract(theGff) | gff_standardize
+gff_standardize.out.combine(theFasta) | kozakFastaExtract_2 | (plot_kpLogo & plot_weblogo)
+
 }
