@@ -136,6 +136,9 @@ println trinityFasta_ch1
 workflow {
 theGff = Channel.fromPath(params.gff)
 theFasta = Channel.fromPath(params.fasta) 
+theGff.view()
+theFasta.view()
+
 kozakGFF3Extract(theGff) | gff_standardize
 gff_standardize.out.combine(theFasta) | kozakFastaExtract_2 | (plot_kpLogo & plot_weblogo)
 
