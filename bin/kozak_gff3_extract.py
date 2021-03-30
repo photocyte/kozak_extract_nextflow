@@ -19,7 +19,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-g",help="The path to the GFF file")
 parser.add_argument("--i",type=int,default=10,help="# of upstream bases.")
-parser.add_argument("--j",type=int,default=2,help="# of downstream bases.")
+parser.add_argument("--j",type=int,default=5,help="# of downstream bases.")
 parser.add_argument("--in_memory",default=False,action='store_true')
 parser.add_argument("--transdecoder_mode",default=False,action='store_true')
 parser.add_argument("--sqlite_name",default="gffutils.sqlite")

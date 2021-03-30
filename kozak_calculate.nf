@@ -25,7 +25,7 @@ output:
 script:
 """
 set -o pipefail
-kozak_gff3_extract.py -g ${transdecoderGFF} --in_memory --i 20 | gzip > kozaks.gff.gz
+kozak_gff3_extract.py -g ${transdecoderGFF} --in_memory | gzip > kozaks.gff.gz
 ##gt gff3 -tidy -sort -retainids
 """
 }
