@@ -1,5 +1,5 @@
-GFF=GWHAZHV00000000.gff
-FASTA=GWHAZHV00000000.genome.fasta.gz
+GFF=~/scratch/Projects/20200925_UTEX2797_assembly_v0.2/UTEX2797_genomic.v0.2.gff
+FASTA=~/scratch/Projects/20200925_UTEX2797_assembly_v0.2/UTEX2797_genome.v0.2.fasta
 
 ##GFF=../PPYR_OGS/PPYR_OGS1.1.gff3
 ##FASTA=../PPYR_OGS/Genome_release.fa

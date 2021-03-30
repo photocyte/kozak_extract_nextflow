@@ -68,7 +68,7 @@ for g in db.features_of_type("gene"):
     new_stop = -999999999999999999
     
 
-    all_children = list(db.children(g.id,featuretype='CDS'))
+    all_children = list(db.children(g.id,featuretype='CDS',order_by=('start','end')))
     if len(all_children) == 0:
         continue
     if g.strand == "+":
